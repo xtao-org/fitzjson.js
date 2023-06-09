@@ -1,0 +1,16 @@
+{
+  "name": "fitzjson.js",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "An implementation of fitzJSON in JavaScript",
+  "main": "web.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Darius J Chuck",
+  "license": "MIT",
+  "dependencies": {
+    "@xtao-org/tree-sitter-fitzjson": "^0.1.0",
+    "web-tree-sitter": "^0.20.8"
+  }
+}
