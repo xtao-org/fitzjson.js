@@ -50,13 +50,16 @@ const assert = (cond, msg = '') => {
 
 /**
  * @param {Parser.SyntaxNode} node
+ * TODO: perhaps truncate errors if too many
  */
 const getErrors = (node, errors = []) => {
+  if (errors.includes(node)) return errors
+  if (node.type === 'ERROR' || node.hasError() || node.isMissing()) errors.push(node)
   for (const c of node.children) {
-    if (c.type === 'ERROR') errors.push(c)
+    if (c.type === 'ERROR' || node.hasError() || c.isMissing()) errors.push(c)
     else getErrors(c, errors)
   }
-  return errors
+  return errors.map(e => e.toString())
 }
 
 /**
