@@ -1,48 +1,36 @@
 import Parser from 'web-tree-sitter';
 
-import {readFileSync} from 'node:fs'
+import {readFileSync, existsSync} from 'node:fs'
 
-(async () => {
+const env = process.env
+if (existsSync('.env.json')) {
+  Object.assign(env, JSON.parse(readFileSync('.env.json')))
+}
+
+const TS_FITZJSON_WASM_PATH = env.TS_FITZJSON_WASM_PATH ?? 'node_modules/@xtao-org/tree-sitter-fitzjson/tree-sitter-fitzjson.wasm'
+
+export const makeFitzJSON = async () => {
   await Parser.init();
   const parser = new Parser();
-  const Lang = await Parser.Language.load('node_modules/@xtao-org/tree-sitter-fitzjson/tree-sitter-fitzjson.wasm');
+  const Lang = await Parser.Language.load(TS_FITZJSON_WASM_PATH);
   parser.setLanguage(Lang);
-  const txt = readFileSync('./ex2.2.fitz', {encoding: 'utf-8'})
-  const tree = parser.parse(txt);
 
-  console.log(tree.rootNode.type === 'top')
-  console.log(tree.rootNode.child(0).type === 'entries')
-  // cons
+  // ?todo: support reviver
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter
+  const parse = (str, reviver) => {
+    const tree = parser.parse(str)
+    return evalfitz(tree, reviver)
+  }
 
-  console.log(evalfitz(tree, {mods: {
-    bigint: ({node}) => {
-      // console.log(node.type)
-      assert(node.type === 'number')
-      return {value: BigInt(node.text)}
-    },
-    i32: ({node, value}) => {
-      assert(node.type === 'number')
-      const num = value | 0
-      assert(value === num, `Not an int32: ${value}`)
-      return {value: num}
-    },
-    join: ({value}) => {
-      assert(Array.isArray(value))
+  const stringify = (value, replacer, space) => {
+    // todo
+  }
 
-      return {value: value.join('')}
-    },
-    env: ({node}) => {
-      let key
-      if (node.type === 'id') key = node.text
-      else if (node.type === 'string') key = evalstring(node)
-      else throw Error(`@env`)
-
-      return {value: process.env[key]}
-    }
-  }}))
-
-  // tree.rootNode.children
-})();
+  return {
+    parse,
+    stringify
+  }
+}
 
 const assert = (cond, msg = '') => {
   if (cond === false) throw Error(`Assertion failed: ${msg}`)
@@ -53,13 +41,13 @@ const assert = (cond, msg = '') => {
  * TODO: perhaps truncate errors if too many
  */
 const getErrors = (node, errors = []) => {
-  if (errors.includes(node)) return errors
-  if (node.type === 'ERROR' || node.hasError() || node.isMissing()) errors.push(node)
+  // if (errors.includes(node)) return errors
+  if (node.type === 'ERROR' || node.type === 'MISSING' || node.hasError() || node.isMissing()) errors.push(node)
   for (const c of node.children) {
-    if (c.type === 'ERROR' || node.hasError() || c.isMissing()) errors.push(c)
-    else getErrors(c, errors)
+    // if (c.type === 'ERROR' || c.type === 'MISSING' || node.hasError() || c.isMissing()) errors.push(c)
+    getErrors(c, errors)
   }
-  return errors.map(e => e.toString())
+  return errors//.map(e => e.toString())
 }
 
 /**
@@ -282,3 +270,38 @@ const evalplainval = (node, ctx) => {
   console.error(node, `|${node.type}|`)
   throw Error('evalplainval')
 }
+
+
+
+(async () => {
+  const fitzJSON = await makeFitzJSON()
+  const txt = readFileSync('./examples/example1.fitz', {encoding: 'utf-8'})
+  const parsed = fitzJSON.parse(txt, {mods: {
+    bigint: ({node}) => {
+      // console.log(node.type)
+      assert(node.type === 'number')
+      return {value: BigInt(node.text)}
+    },
+    i32: ({node, value}) => {
+      assert(node.type === 'number')
+      const num = value | 0
+      assert(value === num, `Not an int32: ${value}`)
+      return {value: num}
+    },
+    join: ({value}) => {
+      assert(Array.isArray(value))
+
+      return {value: value.join('')}
+    },
+    env: ({node}) => {
+      let key
+      if (node.type === 'id') key = node.text
+      else if (node.type === 'string') key = evalstring(node)
+      else throw Error(`@env`)
+
+      return {value: process.env[key]}
+    }
+  }});
+
+  console.log(parsed)
+})();
