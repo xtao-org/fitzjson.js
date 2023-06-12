@@ -69,7 +69,7 @@ multiline ``'/* */
 
 m1 'sadasd'
 
-m2 [`'a'``'b'`'c''d']
+m2 [`'a'` `'b'` 'c' 'd']
 
 x '  
  /**/  
@@ -89,10 +89,10 @@ u: @i32 2147483647
 name: 'John'
 vars: {
   name: 'Mildred'
-  surname: @join [self.name'ovsky']
+  surname: @join [self.name 'ovsky']
 }
 xzs: [@i32 5]
-message: @join ['Hello, '$.vars.name'! BTW PATH is '@env PATH]
+message: @join ['Hello, ' $.vars.name '! BTW PATH is ' @env PATH]
 also: [$('vars')('name')]
 xml: @xml ```'
   <div>
