@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs'
 
 import {makeFitzJSON} from './fitzjson.js'
+import { stringify } from './stringify.js';
 
 const assert = (cond, msg = '') => {
   if (cond === false) throw Error(`Assertion failed: ${msg}`)
@@ -37,4 +38,6 @@ const assert = (cond, msg = '') => {
   }});
 
   console.log(parsed)
+
+  console.log(stringify(parsed))
 })();
