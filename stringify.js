@@ -1,6 +1,6 @@
 /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 export const stringify = (value, replacer, space) => {
-  // todo: replacer
+  // todo: replacer function
   if (['symbol', 'undefined', 'function'].includes(typeof value)) throw Error('oops')
 
   let indent = ''
@@ -13,15 +13,16 @@ export const stringify = (value, replacer, space) => {
   }
   let cindent = ''
 
-  // todo: filter by onlyProps
+  let selectProps = null
   if (Array.isArray(replacer)) {
-    const onlyProps = []
+    selectProps = []
     for (const it of replacer) {
-      if (['string', 'number'].includes(typeof it)) onlyProps.push(it)
+      if (typeof it === 'string') selectProps.push(it)
+      else if (typeof it === 'number') selectProps.push(it.toString())
     }
   }
 
-  const opts = {indent, cindent, onlyProps}
+  const opts = {indent, cindent, selectProps}
 
   return stringifyvalue(value, opts)
 }
@@ -161,11 +162,17 @@ const stringifyentries = (entries, opts) => {
   // )),
   if (entries.length === 0) return '{}'
 
+  const {selectProps} = opts
+
+  const selectedEntries = selectProps === null? 
+    entries:
+    entries.filter(([k, v]) => selectProps.includes(k))
+
   const its = []
   const {indent} = opts
   if (indent === '') {
-    for (const [k, v] of entries) {
-      its.push(stringifystring(k) + ':' + stringifyvalue(v, opts))
+    for (const [k, v] of selectedEntries) {
+      its.push(stringifystring(k, opts) + ':' + stringifyvalue(v, opts))
     }
     return `{${its.join(',')}}`
   }
@@ -178,8 +185,8 @@ const stringifyentries = (entries, opts) => {
     cindent: ncindent
   }
 
-  for (const [k, v] of entries) {
-    its.push(stringifystring(k) + ': ' + stringifyvalue(v, nopts))
+  for (const [k, v] of selectedEntries) {
+    its.push(stringifystring(k, nopts) + ': ' + stringifyvalue(v, nopts))
   }
 
   return `{\n${ncindent}${its.join(`,\n${ncindent}`)}\n${cindent}}`
