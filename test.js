@@ -39,5 +39,5 @@ const assert = (cond, msg = '') => {
 
   console.log(parsed)
 
-  console.log(stringify(parsed))
+  console.log(stringify(parsed, null, 2))
 })();
