@@ -1,8 +1,5 @@
 /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 export const stringify = (value, replacer, space) => {
-  // todo: replacer function
-  if (['symbol', 'undefined', 'function'].includes(typeof value)) throw Error('oops')
-
   let indent = ''
   if (typeof space === 'number') {
     for (let i = 0; i < 10 && i < space; ++i) {
@@ -14,31 +11,86 @@ export const stringify = (value, replacer, space) => {
   let cindent = ''
 
   let selectProps = null
+  let replaceFn
   if (Array.isArray(replacer)) {
     selectProps = []
     for (const it of replacer) {
       if (typeof it === 'string') selectProps.push(it)
       else if (typeof it === 'number') selectProps.push(it.toString())
     }
+  } else if (typeof replacer === 'function') {
+    replaceFn = replacer
   }
 
-  const opts = {indent, cindent, selectProps}
+  const opts = {
+    indent, 
+    cindent, 
+    selectProps, 
+    replaceFn, 
+    key: '', 
+    parent: null,
+    seen: new Set()
+  }
 
   return stringifyvalue(value, opts)
 }
 
 const stringifyvalue = (value, opts) => {
+  const {replaceFn, key} = opts
+
+  if (replaceFn !== undefined) {
+    const {parent} = opts
+    value = replaceFn.call(parent, key, value)
+  }
+
   if (value === null) return 'null'
+  
+  if (typeof value.toFitzJSON === 'function') {
+    value = value.toFitzJSON(key)
+  } else if (typeof value.toJSON === 'function') {
+    value = value.toJSON(key)
+  }
+
+  if (
+    value instanceof Boolean || 
+    value instanceof Number ||
+    value instanceof String ||
+    value instanceof BigInt ||
+    value instanceof Symbol
+  ) {
+    value = value.valueOf()
+  }
+
+  //
+  // simple types
+  //
   if (value === true) return 'true'
   if (value === false) return 'false'
   if (Number.isNaN(value)) return 'NaN'
   if (typeof value === 'number') return value.toString()
   if (typeof value === 'bigint') return `@bigint ${value.toString()}`
   if (typeof value === 'string') return stringifystring(value, opts)
+
+  //
+  // complex types
+  //
+  if (opts.seen.has(value)) throw TypeError(`Converting circular structure to fitzJSON`)
+  opts.seen.add(value)
+
   if (Array.isArray(value)) return stringifyarray(value, opts)
+  // todo: perhaps serialize Map as @Map or object as @object
   if (value instanceof Map) return stringifymap(value, opts)
+  // todo?: perhopas serialize Set as @Set [...]
 
   if (typeof value === 'object') return stringifyobject(value, opts)
+
+  //
+  // disappearing types
+  //
+  // todo: perhaps stringify symbol and undefined to something more useful
+  if (typeof value === 'function') return undefined
+  if (typeof value === 'symbol') return undefined
+  if (typeof value === 'undefined') return undefined
 
   throw Error('bug in stringify')
 }
@@ -107,29 +159,30 @@ const stringifyarray = (value, opts) => {
   // )
   if (value.length === 0) return '[]'
 
-  const items = []
-
   const {indent} = opts
+  const opts2 = {...opts, parent: value}
   if (indent === '') {
-    for (const it of value) {
-      items.push(stringifyvalue(it, opts))
-    }
-
+    const items = stringifyarrayitems(value, opts2)
     return `[${items.join(',')}]`
   }
-  const {cindent} = opts
+  const {cindent} = opts2
   const ncindent = cindent + indent
 
   const nopts = {
-    ...opts,
+    ...opts2,
     cindent: ncindent
   }
-
-  for (const it of value) {
-    items.push(stringifyvalue(it, nopts))
-  }
-
+  const items = stringifyarrayitems(value, nopts)
   return `[\n${ncindent}${items.join(`,\n${ncindent}`)}\n${cindent}]`
+}
+const stringifyarrayitems = (value, opts) => {
+  const items = []
+  for (let i = 0; i < value.length; ++i) {
+    const it = value[i]
+    const str = stringifyvalue(it, {...opts, key: i.toString()})
+    items.push(str === undefined? 'null': str)
+  }
+  return items
 }
 
 /**
@@ -143,11 +196,11 @@ const stringifymap = (value, opts) => {
   for (const [k, v] of entries) {
     if (typeof k !== 'string') throw Error('oops')
   }
-  return stringifyentries(entries, opts)
+  return stringifyentries(entries, {...opts, parent: value})
 }
 const stringifyobject = (value, opts) => {
   const entries = Object.entries(value)
-  return stringifyentries(entries, opts)
+  return stringifyentries(entries, {...opts, parent: value})
 }
 
 const stringifyentries = (entries, opts) => {
@@ -168,12 +221,9 @@ const stringifyentries = (entries, opts) => {
     entries:
     entries.filter(([k, v]) => selectProps.includes(k))
 
-  const its = []
   const {indent} = opts
   if (indent === '') {
-    for (const [k, v] of selectedEntries) {
-      its.push(stringifystring(k, opts) + ':' + stringifyvalue(v, opts))
-    }
+    const its = stringifyentriesitems(selectedEntries, opts, ':')
     return `{${its.join(',')}}`
   }
 
@@ -185,9 +235,16 @@ const stringifyentries = (entries, opts) => {
     cindent: ncindent
   }
 
-  for (const [k, v] of selectedEntries) {
-    its.push(stringifystring(k, nopts) + ': ' + stringifyvalue(v, nopts))
-  }
-
+  const its = stringifyentriesitems(selectedEntries, nopts, ': ')
   return `{\n${ncindent}${its.join(`,\n${ncindent}`)}\n${cindent}}`
+}
+const stringifyentriesitems = (selectedEntries, opts, sep) => {
+  const its = []
+  for (const [k, v] of selectedEntries) {
+    const nopts = {...opts, key: k}
+    const value = stringifyvalue(v, nopts)
+    if (value === undefined) continue
+    its.push(stringifystring(k, nopts) + sep + value)
+  }
+  return its
 }
