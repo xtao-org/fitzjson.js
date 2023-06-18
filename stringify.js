@@ -1,11 +1,16 @@
 /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+// todo: Well-formed JSON.stringify()
 export const stringify = (value, replacer, space) => {
+  // todo: perhaps accepts options object as second parameter
+  // then providing the third parameter should be invalid
+  // options would be sth like {replacer, space, mods?, ...}
+
   let indent = ''
-  if (typeof space === 'number') {
+  if (typeof space === 'number' || space instanceof Number) {
     for (let i = 0; i < 10 && i < space; ++i) {
       indent += ' '
     }
-  } else if (typeof space === 'string') {
+  } else if (typeof space === 'string' || space instanceof String) {
     indent = space.slice(0, 10)
   }
   let cindent = ''
@@ -13,10 +18,14 @@ export const stringify = (value, replacer, space) => {
   let selectProps = null
   let replaceFn
   if (Array.isArray(replacer)) {
-    selectProps = []
+    selectProps = new Set()
     for (const it of replacer) {
-      if (typeof it === 'string') selectProps.push(it)
-      else if (typeof it === 'number') selectProps.push(it.toString())
+      if (typeof it === 'string') selectProps.add(it)
+      else if (
+        typeof it === 'number' || 
+        it instanceof String ||
+        it instanceof Number
+      ) selectProps.add(it.toString())
     }
   } else if (typeof replacer === 'function') {
     replaceFn = replacer
@@ -219,7 +228,7 @@ const stringifyentries = (entries, opts) => {
 
   const selectedEntries = selectProps === null? 
     entries:
-    entries.filter(([k, v]) => selectProps.includes(k))
+    entries.filter(([k, v]) => selectProps.has(k))
 
   const {indent} = opts
   if (indent === '') {
