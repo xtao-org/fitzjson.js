@@ -1,3 +1,50 @@
+export class Decorated {
+  constructor(decostr, value) {
+    validateIdentifier(decostr)
+
+    // ?todo: if (decostr === 'bigint' && typeof value !== 'bigint') throw '!!!' 
+    // etc.
+
+    this.decostr = decostr
+    this.value = value
+  }
+}
+
+/**
+ * 
+ * @param {string} str 
+ * @returns 
+ */
+const validateIdentifier = (str) => {
+  // token(/[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*/u)
+
+  if (str.length === 0) {
+    throw Error("Invalid zero-length identifier")
+  }
+
+  // note: could simplify to that:
+  if (/^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(str) === false) {
+    const codePoints = str[Symbol.iterator]()
+    const first = codePoints.next().value
+    if (/[$_\p{ID_Start}]/.test(first) === false) {
+      throw Error(`Invalid first code point in identifier '${str}': ${first}`)
+    }
+  
+    let i = 1
+    for (const point of codePoints) {
+      if (/[$\u200c\u200d\p{ID_Continue}]/.test(point) === false) {
+        throw Error(`Invalid code point #${i} in identifier '${str}': ${point}`)
+      }
+      ++i
+    }
+
+    console.error('Bug in validateIdentifier!')
+    throw Error(`Invalid identifier: ${str}`)
+  }
+
+  return true
+}
+
 /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 // note: Well-formed JSON.stringify() is implemented
 // todo: many tests
@@ -22,11 +69,9 @@ export const stringify = (value, replacer, space) => {
     selectProps = new Set()
     for (const it of replacer) {
       if (typeof it === 'string') selectProps.add(it)
-      else if (
-        typeof it === 'number' || 
-        it instanceof String ||
-        it instanceof Number
-      ) selectProps.add(it.toString())
+      else if (typeof it === 'number'
+        || it instanceof String
+        || it instanceof Number) selectProps.add(it.toString())
     }
   } else if (typeof replacer === 'function') {
     replaceFn = replacer
@@ -86,8 +131,10 @@ const stringifyvalue = (value, opts) => {
 
   if (Array.isArray(value)) return stringifyarray(value, opts)
   // todo: perhaps serialize Map as @Map or object as @object
-  if (value instanceof Map) return stringifymap(value, opts)
   // todo?: perhopas serialize Set as @Set [...]
+  if (value instanceof Map) return stringifymap(value, opts)
+
+  if (value instanceof Decorated) return `@${value.decostr} ${stringifyvalue(value.value, opts)}`
 
   if (typeof value === 'object') return stringifyobject(value, opts)
 
@@ -103,6 +150,7 @@ const stringifyvalue = (value, opts) => {
 }
 
 // note: Well-formed JSON.stringify() is implemented
+// todo: consider escaping \u2028 and \u2029 the way firefox does
 const stringifystring = (value, opts) => {
   // jsonstring: $ => choice(
   //   '""',
