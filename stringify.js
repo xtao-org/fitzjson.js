@@ -1,7 +1,8 @@
 /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
-// todo: Well-formed JSON.stringify()
+// note: Well-formed JSON.stringify() is implemented
+// todo: many tests
 export const stringify = (value, replacer, space) => {
-  // todo: perhaps accepts options object as second parameter
+  // todo: perhaps accept options object as second parameter
   // then providing the third parameter should be invalid
   // options would be sth like {replacer, space, mods?, ...}
 
@@ -60,13 +61,10 @@ const stringifyvalue = (value, opts) => {
     value = value.toJSON(key)
   }
 
-  if (
-    value instanceof Boolean || 
-    value instanceof Number ||
-    value instanceof String ||
-    value instanceof BigInt ||
-    value instanceof Symbol
-  ) {
+  if ( value instanceof Boolean
+    || value instanceof Number
+    || value instanceof String
+    || value instanceof BigInt ) {
     value = value.valueOf()
   }
 
@@ -104,6 +102,7 @@ const stringifyvalue = (value, opts) => {
   throw Error('bug in stringify')
 }
 
+// note: Well-formed JSON.stringify() is implemented
 const stringifystring = (value, opts) => {
   // jsonstring: $ => choice(
   //   '""',
@@ -112,9 +111,27 @@ const stringifystring = (value, opts) => {
 
   if (value === "") return '""'
 
+  // ?todo: instead of building string_content char by char, build it slice by slice
   let string_content = ''
 
-  for (const c of value) {
+  let isLeading = false, prev = ''
+  // note: can't use for...of because we want to check for lone surrogates
+  // so we must look at code units rather than code points
+  for (let i = 0; i < value.length; ++i) {
+    const c = value[i]
+
+    if (isLeading) {
+      isLeading = false
+      if (c >= '\uDC00' && c <= '\uDFFF') {
+        // ok -- correct surrogate pair -- insert code units unescaped
+        string_content += prev + c
+        continue
+      } else {
+        // incorrect surrogate pair -- insert previous escaped, process current code unit normally
+        string_content += '\\u' + prev.charCodeAt(0).toString(16)
+      }
+    }
+    
     if (c === '"') string_content += '\\"'
     else if (c === '\\') string_content += '\\\\'
     else if (c === '\b') string_content += '\\b'
@@ -124,8 +141,21 @@ const stringifystring = (value, opts) => {
     else if (c === '\t') string_content += '\\t'
     else if (c <= '\u001F' && c >= '\u0010') string_content += '\\u00' + c.toString(16)
     else if (c < '\u0010') string_content += '\\u000' + c.toString(16)
+    else if (c >= '\uD800' && c <= '\uDBFF') {
+      // possibly leading surrogate -- wait and see if trailing is next
+      isLeading = true
+      prev = c
+    } else if (c >= '\uDC00' && c <= '\uDFFF') {
+      // trailing surrogate without leading -- escape
+      string_content += '\\u' + (c).charCodeAt(0).toString(16) 
+    }
     // todo: perhaps option to \u escape characters > 255 or so
     else string_content += c
+  }
+  // process outstanding lone leading surrogate
+  if (isLeading) {
+    // incorrect surrogate pair -- insert previous escaped, process current code unit normally
+    string_content += '\\u' + prev.charCodeAt(0).toString(16)
   }
 
   return `"${string_content}"`
