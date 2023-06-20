@@ -201,7 +201,8 @@ const evalvalue = (node1, ctx) => {
         const mod = mods[id]
         if (mod !== undefined) modfns.unshift(mod)
         else {
-          // todo: error
+          // todo: more informative; suggest to find spec and official implementation or implement it yourself
+          throw Error(`Unknown decorator: @${v.text}`)
         }
       }
       else {

@@ -22,6 +22,21 @@ const assert = (cond, msg = '') => {
 
       return {value: value.join('')}
     },
+    date: ({value}) => {
+      console.log("TODO: @date builtin?")
+      return {value: new Date(value)}
+    },
+    u8: ({value}) => {
+      console.log("TODO: maybe @u8 builtin")
+      return {value}
+    },
+    u16: ({value}) => {
+      console.log("TODO: maybe @u16 builtin")
+      return {value}
+    },
+    xml: ({value}) => {
+      return {value}
+    },
     env: ({node}) => {
       let key
       if (node.type === 'id') key = node.text
@@ -61,7 +76,7 @@ const assert = (cond, msg = '') => {
 
     const stringified = fitzJSON.stringify(parsed)
 
-  console.assert(input === stringified, input, parsed, stringified)
+    console.assert(input === stringified, input, parsed, stringified)
   }
 
 })();

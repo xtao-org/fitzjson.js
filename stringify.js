@@ -2,8 +2,8 @@ export class Decorated {
   constructor(decostr, value) {
     validateIdentifier(decostr)
 
-    // ?todo: if (decostr === 'bigint' && typeof value !== 'bigint') throw '!!!' 
-    // etc.
+    // ?todo: if (decostr === 'bigint' && typeof value !== 'bigint') throw '!!!'
+    // also for: @date and other builtins
 
     this.decostr = decostr
     this.value = value
@@ -84,10 +84,16 @@ export const stringify = (value, replacer, space) => {
     replaceFn, 
     key: '', 
     parent: null,
+    // ?todo: make this a Map from object to path for better error messages
     seen: new Set()
   }
 
   return stringifyvalue(value, opts)
+}
+
+// note: special treatment of Dates
+Date.prototype.toFitzJSON = function() {
+  return new Decorated('date', this.toISOString())
 }
 
 const stringifyvalue = (value, opts) => {
@@ -99,18 +105,25 @@ const stringifyvalue = (value, opts) => {
   }
 
   if (value === null) return 'null'
-  
-  if (typeof value.toFitzJSON === 'function') {
-    value = value.toFitzJSON(key)
-  } else if (typeof value.toJSON === 'function') {
-    value = value.toJSON(key)
-  }
 
+  // unbox primitives
   if ( value instanceof Boolean
     || value instanceof Number
     || value instanceof String
     || value instanceof BigInt ) {
     value = value.valueOf()
+  }
+
+  // note: cycle-detect as early as possible
+  if (typeof value === 'object') {
+    if (opts.seen.has(value)) throw TypeError(`Converting circular structure to fitzJSON`)
+    opts.seen.add(value)
+  }
+  
+  if (typeof value.toFitzJSON === 'function') {
+    value = value.toFitzJSON(key)
+  } else if (typeof value.toJSON === 'function') {
+    value = value.toJSON(key)
   }
 
   //
@@ -124,11 +137,17 @@ const stringifyvalue = (value, opts) => {
   if (typeof value === 'string') return stringifystring(value, opts)
 
   //
+  // disappearing types
+  //
+  // ?todo: move further up?
+  // todo: perhaps stringify symbol and undefined to something more useful
+  if (typeof value === 'function') return undefined
+  if (typeof value === 'symbol') return undefined
+  if (typeof value === 'undefined') return undefined
+
+  //
   // complex types
   //
-  if (opts.seen.has(value)) throw TypeError(`Converting circular structure to fitzJSON`)
-  opts.seen.add(value)
-
   if (Array.isArray(value)) return stringifyarray(value, opts)
   // todo: perhaps serialize Map as @Map or object as @object
   // todo?: perhopas serialize Set as @Set [...]
@@ -137,14 +156,6 @@ const stringifyvalue = (value, opts) => {
   if (value instanceof Decorated) return `@${value.decostr} ${stringifyvalue(value.value, opts)}`
 
   if (typeof value === 'object') return stringifyobject(value, opts)
-
-  //
-  // disappearing types
-  //
-  // todo: perhaps stringify symbol and undefined to something more useful
-  if (typeof value === 'function') return undefined
-  if (typeof value === 'symbol') return undefined
-  if (typeof value === 'undefined') return undefined
 
   throw Error('bug in stringify')
 }
