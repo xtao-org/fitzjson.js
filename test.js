@@ -11,11 +11,6 @@ const assert = (cond, msg = '') => {
   const fitzJSON = await makeFitzJSON()
   const txt = readFileSync('./examples/example1.fitz', {encoding: 'utf-8'})
   const parsed = fitzJSON.parse(txt, {mods: {
-    bigint: ({node}) => {
-      // console.log(node.type)
-      assert(node.type === 'number')
-      return {value: BigInt(node.text)}
-    },
     i32: ({node, value}) => {
       assert(node.type === 'number')
       const num = value | 0
@@ -40,4 +35,33 @@ const assert = (cond, msg = '') => {
   console.log(parsed)
 
   console.log(stringify(parsed, null, 2))
+  console.log(stringify(parsed))
+  console.log(stringify("\uD800")) // '"\\ud800"'
+  console.log(stringify("\uD800\uDC12")) // '"𐀒"'
+  console.log(stringify("\uDC12")) // '"\udc12"'
+  console.log(stringify(Object(Symbol()))) // {}
+  console.log(stringify(Symbol())) // undefined
+  console.log(stringify([Symbol()])) // [null]
+  console.log(stringify({a: Symbol()})) // {}
+  console.log(stringify("\u2028\u2029"))
+  console.log(JSON.stringify("\u2028\u2029") === stringify("\u2028\u2029"))
+
+
+  // const circularReference = {};
+  // circularReference.myself = circularReference;
+
+  // // Serializing circular references throws "TypeError: cyclic object value"
+  // stringify(circularReference);
+  {
+    const fitzJSON = await makeFitzJSON()
+
+    const input = `{"a":@bigint 2219302139021039219030213902193}`
+
+    const parsed = fitzJSON.parse(input)
+
+    const stringified = fitzJSON.stringify(parsed)
+
+  console.assert(input === stringified, input, parsed, stringified)
+  }
+
 })();

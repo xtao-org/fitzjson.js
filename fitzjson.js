@@ -2,6 +2,8 @@ import Parser from 'web-tree-sitter';
 
 import {readFileSync, existsSync} from 'node:fs'
 
+import {stringify} from './stringify.js'
+
 const env = process.env
 if (existsSync('.env.json')) {
   Object.assign(env, JSON.parse(readFileSync('.env.json')))
@@ -19,11 +21,8 @@ export const makeFitzJSON = async () => {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter
   const parse = (str, reviver) => {
     const tree = parser.parse(str)
+    // console.log(tree.rootNode.toString())
     return evalfitz(tree, reviver)
-  }
-
-  const stringify = (value, replacer, space) => {
-    // todo
   }
 
   return {
@@ -53,7 +52,18 @@ const getErrors = (node, errors = []) => {
 /**
  * @param {Parser.Tree} tree
  */
-const evalfitz = (tree, {mods = {}} = {}) => {
+const evalfitz = (tree, opts = {}) => {
+  const mods = {
+    ...(opts.mods ?? {}),
+    // todo: more builtins
+    // todo: prohibit redefining bigint and other builtins
+    bigint: ({node}) => {
+      // console.log(node.type)
+      assert(node.type === 'number')
+      return {value: BigInt(node.text)}
+    },
+  }
+
   if (tree.rootNode.hasError()) {
     let n = tree.rootNode
     const errors = getErrors(n)
@@ -78,6 +88,7 @@ const evalfitz = (tree, {mods = {}} = {}) => {
     return evalentries(topnode, ctx)
   } 
   else if (topnode.type === 'items') {
+    // todo: dealias items in the grammar to avoid bug with weird behavior of alias where it names every node in a seq instead of the whole seq
     // topenv.$ = topenv.self = []
     return evalitems(topnode, ctx)
   }

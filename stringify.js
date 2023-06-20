@@ -15,7 +15,7 @@ export class Decorated {
  * @param {string} str 
  * @returns 
  */
-const validateIdentifier = (str) => {
+export const validateIdentifier = (str) => {
   // token(/[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*/u)
 
   if (str.length === 0) {
