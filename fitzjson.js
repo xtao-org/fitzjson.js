@@ -17,19 +17,22 @@ export const makeFitzJSON = async () => {
   const Lang = await Parser.Language.load(TS_FITZJSON_WASM_PATH);
   parser.setLanguage(Lang);
 
-  // ?todo: support reviver
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter
+  /// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse
+  /// note: supports reviver param as a function like JSON.stringify or wrapped in an options object {reviver}
   const parse = (str, reviverOrOpts) => {
     const tree = parser.parse(str)
     // console.log(tree.rootNode.toString())
-    let opts = {}
+    let opts
     if (typeof reviverOrOpts === 'function') {
-      opts.reviver = reviverOrOpts
-    } else if (reviverOrOpts !== null && typeof reviverOrOpts === 'object' && Array.isArray(reviverOrOpts) === false) {
+      opts = {reviver: reviverOrOpts}
+    } 
+    else if (reviverOrOpts !== null 
+      && typeof reviverOrOpts === 'object' 
+      && Array.isArray(reviverOrOpts) === false) 
+    {
       opts = reviverOrOpts
-      const {reviver: r} = opts
-      if (typeof r !== 'function') {
-        opts.reviver = undefined
+      if (typeof opts.reviver !== 'function') {
+        delete opts.reviver
       }
     }
     return evalfitz(tree, opts)
@@ -53,10 +56,9 @@ const getErrors = (node, errors = []) => {
   // if (errors.includes(node)) return errors
   if (node.type === 'ERROR' || node.type === 'MISSING' || node.hasError() || node.isMissing()) errors.push(node)
   for (const c of node.children) {
-    // if (c.type === 'ERROR' || c.type === 'MISSING' || node.hasError() || c.isMissing()) errors.push(c)
     getErrors(c, errors)
   }
-  return errors//.map(e => e.toString())
+  return errors
 }
 
 /**
