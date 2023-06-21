@@ -19,10 +19,20 @@ export const makeFitzJSON = async () => {
 
   // ?todo: support reviver
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter
-  const parse = (str, reviver) => {
+  const parse = (str, reviverOrOpts) => {
     const tree = parser.parse(str)
     // console.log(tree.rootNode.toString())
-    return evalfitz(tree, reviver)
+    let opts = {}
+    if (typeof reviverOrOpts === 'function') {
+      opts.reviver = reviverOrOpts
+    } else if (reviverOrOpts !== null && typeof reviverOrOpts === 'object' && Array.isArray(reviverOrOpts) === false) {
+      opts = reviverOrOpts
+      const {reviver: r} = opts
+      if (typeof r !== 'function') {
+        opts.reviver = undefined
+      }
+    }
+    return evalfitz(tree, opts)
   }
 
   return {
@@ -74,6 +84,8 @@ const evalfitz = (tree, opts = {}) => {
   assert(tree.rootNode.type === 'top')
   const topnode = tree.rootNode.child(0)
 
+  // ?todo: unrename
+  const {reviver: reviveFn} = opts
 
   const ctx = {
     topenv: {
@@ -81,22 +93,26 @@ const evalfitz = (tree, opts = {}) => {
       env: process.env,
     },
     mods,
+    reviveFn,
+    key: '',
   }
 
+  let ret
   if (topnode.type === 'entries') {
     // topenv.$ = topenv.self = new Map()
-    return evalentries(topnode, ctx)
+    ret = evalentries(topnode, ctx)
   } 
   else if (topnode.type === 'items') {
     // todo: dealias items in the grammar to avoid bug with weird behavior of alias where it names every node in a seq instead of the whole seq
     // topenv.$ = topenv.self = []
-    return evalitems(topnode, ctx)
+    ret = evalitems(topnode, ctx)
   }
   else {
-    return evalvalue(topnode, ctx)
+    ret = evalvalue(topnode, ctx)
   }
-  console.error(topnode.id, topnode)
-  throw Error('evalfitz')
+  if (reviveFn !== undefined) return reviveFn('', ret)
+
+  return ret
 }
 
 /**
@@ -104,7 +120,7 @@ const evalfitz = (tree, opts = {}) => {
  */
 const evalentries = (node, ctx) => {
   const ret = new Map()
-  const {topenv} = ctx
+  const {topenv, reviveFn} = ctx
   if (topenv.$ === undefined) topenv.$ = ret
   topenv.self = ret
   loop: for (const c of node.children) {
@@ -122,7 +138,7 @@ const evalentries = (node, ctx) => {
     // if (valuenode === null) console.error(c.toString(), c.childForFieldName('value'))
 
     const key = evalkey(keynode, ctx)
-    const value = evalvalue(valuenode, ctx)
+    let value = evalvalue(valuenode, ctx)
 
     // for (const deco of decos) {
     //   for (const dd of deco.children) {
@@ -131,6 +147,11 @@ const evalentries = (node, ctx) => {
     // }
 
     if (ret.has(key)) throw Error(`Duplicate key: |${key}|!`)
+
+    if (reviveFn !== undefined) {
+      value = reviveFn(key, value)
+      if (value === undefined) continue
+    }
 
     ret.set(key, value)
   }
@@ -142,16 +163,27 @@ const evalentries = (node, ctx) => {
  */
 const evalitems = (node, ctx) => {
   const ret = []
-  const {topenv} = ctx
+  const {topenv, reviveFn} = ctx
   if (topenv.$ === undefined) topenv.$ = ret
   // topenv.self = ret
+  let itemIndex = 0
   for (const c of node.children) {
-    if (['[', ']', '\n'].includes(c.type)) continue
+    // filter out '[', ']', '\n', ','
+    if (c.type !== 'item') continue
 
     // todo: if disabled continue
     // todo: eliminate comments
 
-    ret.push(evalvalue(c, ctx))
+    let value = evalvalue(c, ctx)
+
+    if (reviveFn !== undefined) {
+      value = reviveFn(itemIndex.toString(), value)
+      // note: incrementing length instead of pushing to create a sparse array to conform with JSON.parse's weird behavior
+      if (value === undefined) {
+        ret.length += 1
+      } else ret.push(value)
+    } else ret.push(value)
+    ++itemIndex
   }
   return ret
 }
@@ -183,8 +215,6 @@ const evalvalue = (node1, ctx) => {
   // const node = node1.childForFieldName('plainval')
   const node = node1.childForFieldName('plainval')
 
-
-
   const plainval = evalplainval(node, ctx)
 
   const {mods} = ctx
@@ -207,6 +237,7 @@ const evalvalue = (node1, ctx) => {
       }
       else {
         // todo
+        // or: remove non-id decorators
       }
     }
   }
