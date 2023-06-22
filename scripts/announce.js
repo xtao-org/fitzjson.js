@@ -7,5 +7,7 @@ https://github.com/xtao-org/fitzjson.js/releases
 
 #fitzjson #javascript #release #json
 `, {
-  visibility: "public"
+  body: {
+    visibility: "public"
+  }
 })
