@@ -12,10 +12,18 @@ Depends on the reference [tree-sitter-fitzjson](https://github.com/xtao-org/tree
 
 Provides `fitzJSON.parse` and `fitzJSON.stringify` that work analogous to `JSON.parse` and `JSON.stringify` (see below for details).
 
+## Install
+
+```
+npm i @xtao-org/fitzjson.js
+```
+
+## Use
+
 To use, a parser object must be asynchronously produced first by `makeFitzJSON`.
 
 ```js
-import {makeFitzJSON} from 'fitzjson.js'
+import {makeFitzJSON} from '@xtao-org/fitzjson.js'
 
 const fitzJSON = await makeFitzJSON()
 
