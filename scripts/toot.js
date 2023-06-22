@@ -38,4 +38,3 @@ export const toot = async (status, opts = {}) => {
     throw Error(`Toot failed!`)
   }
 }
-
