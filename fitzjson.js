@@ -202,12 +202,15 @@ const evalkey = (node, ctx) => {
   throw Error('evalkey')
 }
 
+// todo: export other fns to facilitate making custom mods
 /**
  * @param {Parser.SyntaxNode} node 
  */
-const evalstring = (node, ctx) => {
+export const evalstring = (node, ctx) => {
   if (node.type === 'jsonstring') return JSON.parse(node.text)
   if (node.type === 'multistring') return node.descendantsOfType('ms_content')[0].text
+  // todo: better errors
+  console.error(node.type, node.toString())
   throw Error('evalstring')
 }
 
