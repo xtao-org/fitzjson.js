@@ -3,13 +3,17 @@
  * Note: default visibility is private
  * @param {string} status 
  * @param {{
- *  body?: {visibility: 'private' | 'public', status: string}
+ *  url?: string
+ *  body?: {
+ *    visibility?: 'private' | 'public', 
+ *    status?: string, 
+ *  }
  *  token?: string
  * }} opts 
  */
 export const toot = async (status, opts = {}) => {
-  const {body = {}, token = process.env.TOOT_TOKEN} = opts
-  const ret = await fetch('https://toot.io/api/v1/statuses', {
+  const {url = 'https://toot.io', body = {}, token = process.env.TOOT_TOKEN} = opts
+  const ret = await fetch(`${url}/api/v1/statuses`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
