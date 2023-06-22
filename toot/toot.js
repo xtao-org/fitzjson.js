@@ -34,4 +34,3 @@ export const toot = async (status, opts = {}) => {
   }
 }
 
-
