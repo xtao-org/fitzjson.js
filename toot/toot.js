@@ -1,3 +1,4 @@
+// todo: extract to lib?
 /**
  * Note: default visibility is private
  * @param {string} status 

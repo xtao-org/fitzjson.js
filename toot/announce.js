@@ -7,6 +7,5 @@ https://github.com/xtao-org/fitzjson.js/releases
 
 #fitzjson #javascript #release #json
 `, {
-  // todo: make public when tested
-  // visibility: "public"
+  visibility: "public"
 })
