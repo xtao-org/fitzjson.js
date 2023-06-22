@@ -121,7 +121,7 @@ const evalfitz = (tree, opts = {}) => {
  * @param {Parser.SyntaxNode} node 
  */
 const evalentries = (node, ctx) => {
-  const ret = new Map()
+  const ret = {}
   const {topenv, reviveFn} = ctx
   if (topenv.$ === undefined) topenv.$ = ret
   topenv.self = ret
@@ -148,15 +148,16 @@ const evalentries = (node, ctx) => {
     //   }
     // }
 
-    if (ret.has(key)) throw Error(`Duplicate key: |${key}|!`)
+    if (Object.hasOwn(ret, key)) throw Error(`Duplicate key: |${key}|!`)
 
     if (reviveFn !== undefined) {
       value = reviveFn(key, value)
       if (value === undefined) continue
     }
 
-    ret.set(key, value)
+    ret[key] = value
   }
+
   return ret
 }
 

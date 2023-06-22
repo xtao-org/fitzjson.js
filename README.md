@@ -69,3 +69,11 @@ Also, in fitzJSON.stringify:
 <!-- todo: should identifiers be like JavaScript identifiers or simplified to a-zA-Z0-9$_? -->
 
 Note: the [well-formed JSON.stringify() specification](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#well-formed_json.stringify) is implemented, so lone UTF-16 surrogates will be properly escaped in the output.
+
+## Development
+
+### Run tests
+
+```
+node --test
+```

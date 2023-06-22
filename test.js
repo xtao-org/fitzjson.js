@@ -1,87 +1,34 @@
-import {readFileSync} from 'node:fs'
-
-import {makeFitzJSON} from './fitzjson.js'
+import test from 'node:test'
+import assert from 'node:assert/strict';
 import { stringify } from './stringify.js';
+import { makeFitzJSON } from './fitzjson.js';
 
-const assert = (cond, msg = '') => {
-  if (cond === false) throw Error(`Assertion failed: ${msg}`)
-}
+test('stringify', () => {
+  assert.equal(stringify("\uD800"), '"\\ud800"') // '"\\ud800"'
+  assert.equal(stringify("\uD800\uDC12"), '"𐀒"') // '"𐀒"'
+  assert.equal(stringify("\uDC12"), '"\\udc12"') // '"\udc12"'
+  assert.equal(stringify(Object(Symbol())), '{}') // {}
+  assert.equal(stringify(Symbol()), undefined) // undefined
+  assert.equal(stringify([Symbol()]), '[null]') // [null]
+  assert.equal(stringify({a: Symbol()}), '{}') // {}
+  // todo: perhaps escape these the way firefox does
+  assert.equal(stringify("\u2028\u2029"), '"\u2028\u2029"')
+})
 
-(async () => {
+test('parse', async () => {
+  const fitz = await makeFitzJSON()
+
+  assert.deepEqual(fitz.parse("{a: 1}"), {a: 1})
+})
+
+test('roundtrip', async () => {
   const fitzJSON = await makeFitzJSON()
-  const txt = readFileSync('./examples/example1.fitz', {encoding: 'utf-8'})
-  const parsed = fitzJSON.parse(txt, {
-    mods: {
-      i32: ({node, value}) => {
-        assert(node.type === 'number')
-        const num = value | 0
-        assert(value === num, `Not an int32: ${value}`)
-        return {value: num}
-      },
-      join: ({value}) => {
-        assert(Array.isArray(value))
 
-        return {value: value.join('')}
-      },
-      date: ({value}) => {
-        console.log("TODO: @date builtin?")
-        return {value: new Date(value)}
-      },
-      u8: ({value}) => {
-        console.log("TODO: maybe @u8 builtin")
-        return {value}
-      },
-      u16: ({value}) => {
-        console.log("TODO: maybe @u16 builtin")
-        return {value}
-      },
-      xml: ({value}) => {
-        return {value}
-      },
-      env: ({node}) => {
-        let key
-        if (node.type === 'id') key = node.text
-        else if (node.type === 'string') key = evalstring(node)
-        else throw Error(`@env`)
+  const input = `{"a":@bigint 2219302139021039219030213902193}`
 
-        return {value: process.env[key]}
-      }
-    }
-  });
+  const parsed = fitzJSON.parse(input)
 
-  console.log(parsed)
+  const stringified = fitzJSON.stringify(parsed)
 
-  console.log(stringify(parsed, null, 2))
-  console.log(stringify(parsed))
-  console.log(stringify("\uD800")) // '"\\ud800"'
-  console.log(stringify("\uD800\uDC12")) // '"𐀒"'
-  console.log(stringify("\uDC12")) // '"\udc12"'
-  console.log(stringify(Object(Symbol()))) // {}
-  console.log(stringify(Symbol())) // undefined
-  console.log(stringify([Symbol()])) // [null]
-  console.log(stringify({a: Symbol()})) // {}
-  console.log(stringify("\u2028\u2029"))
-  console.log(JSON.stringify("\u2028\u2029") === stringify("\u2028\u2029"))
-
-  console.log(fitzJSON.parse("[1, 2, 3]", (k, v) => (v === 2? undefined: v)))
-  console.log(JSON.parse("[1, 2, 3]", (k, v) => (v === 2? undefined: v)))
-
-
-  // const circularReference = {};
-  // circularReference.myself = circularReference;
-
-  // // Serializing circular references throws "TypeError: cyclic object value"
-  // stringify(circularReference);
-  {
-    const fitzJSON = await makeFitzJSON()
-
-    const input = `{"a":@bigint 2219302139021039219030213902193}`
-
-    const parsed = fitzJSON.parse(input)
-
-    const stringified = fitzJSON.stringify(parsed)
-
-    console.assert(input === stringified, input, parsed, stringified)
-  }
-
-})();
+  assert.equal(input, stringified)
+})
