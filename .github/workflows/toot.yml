@@ -17,4 +17,4 @@ jobs:
       - name: Announce to Mastodon
         run: node toot/announce.js
         env:
-            MASTODON_AUTH_TOKEN: ${{ secrets.TOOT_TOKEN }}
+            TOOT_TOKEN: ${{ secrets.TOOT_TOKEN }}
