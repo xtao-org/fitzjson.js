@@ -68,11 +68,12 @@ const evalfitz = (tree, opts = {}) => {
   const mods = {
     ...(opts.mods ?? {}),
     // todo: more builtins
-    // todo: prohibit redefining bigint and other builtins
+    // todo: error/warn when redefining bigint and other builtins
     bigint: ({node}) => {
       // console.log(node.type)
       assert(node.type === 'number')
-      return {value: BigInt(node.text)}
+      // note: BigInt() disallows _ separators, so removing them before parsing
+      return {value: BigInt(node.text.replaceAll('_', ''))}
     },
   }
 
@@ -266,7 +267,8 @@ const evalplainval = (node, ctx) => {
   if (node.type === 'true') return true
   if (node.type === 'false') return false
   if (node.type === 'null') return null
-  if (node.type === 'number') return Number(node.text)
+  // note: Number() disallows _ separators, so removing them vefore parsing
+  if (node.type === 'number') return Number(node.text.replaceAll('_', ''))
   if (node.type === 'list') return evalitems(node, ctx)
   if (node.type === 'map') return evalentries(node, ctx)
   if (node.type === 'path') {

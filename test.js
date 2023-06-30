@@ -19,6 +19,13 @@ test('stringify', () => {
 
 test('parse', async () => {
   assert.deepEqual(fitzJSON.parse("{a: 1}"), {a: 1})
+
+  assert.equal(fitzJSON.parse("123_456"), 123456)
+  assert.equal(fitzJSON.parse("NaN"), NaN)
+  assert.equal(fitzJSON.parse("Infinity"), Infinity)
+  assert.equal(fitzJSON.parse("@bigint 123_456"), 123456n)
+
+  assert.throws(() => fitzJSON.parse("@bigint NaN"), /SyntaxError/)
 })
 
 test('roundtrip', async () => {
