@@ -1,5 +1,6 @@
-[EXPERIMENTAL]
-[WORK IN PROGRESS]
+> [!WARNING]
+> [EXPERIMENTAL]
+> [WORK IN PROGRESS]
 
 <p align=center>
 <img src="https://raw.githubusercontent.com/xtao-org/fitzjson/master/logo2.png" alt="fitzJSON logo" width="160"/>
